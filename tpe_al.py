@@ -1,6 +1,4 @@
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-import os
+
 import xlsxwriter
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -8,42 +6,20 @@ from fun_procesamiento import *
 
 os.chdir('/home/clautc/DataspellProjects/tasas_participacion_economica')
 
-with open('/home/clautc/DataspellProjects/tasas_participacion_economica/keys/keys.txt') as k:
-    keys = k.readline()
+# 1) Obtención data
 
 archivo = 'tpALC_jdgo'
-gc = gspread.service_account(filename=keys)
-scopes = gc.auth.scopes
-credentials = ServiceAccountCredentials.from_json_keyfile_name(keys, scopes)
-servicio = gspread.authorize(credentials)
-libro = servicio.open(archivo)
-hoja = libro.worksheet('datos_planos')
-# get_all_records es más directo para extraer data sin los decimales que en excel están con ','
-listas_ = hoja.get_all_values()
+name_sheet = 'datos_planos'
+with open('/home/clautc/DataspellProjects/tasas_participacion_economica/keys/keys.txt') as k:
+    keys = k.readline()
+data = obtener_data_google_sheet(name_archivo=archivo, name_sheet=name_sheet, keys=keys)
 
-data = pd.DataFrame(listas_[1:], columns=listas_[0])
 
+# 2) procesar data
+# normalizar nombres de columnas
+data.columns = name_columns_normal(data.columns)
 # formato de separador de decimales
-
-data.dato = data.dato.replace('\,', '.', regex=True)
-data.dato = data.dato.astype('float')
-# data.replace(dict.fromkeys([5], {r"\,": "."}), inplace=True, regex=True)
-
-# 1) normalizar nombres de columnas
-
-data.columns = data.columns.str.lower(). \
-    str.replace('__', '_'). \
-    str.replace('í', 'i'). \
-    str.replace('ó', 'o'). \
-    str.replace('ñ', 'ni'). \
-    str.strip(). \
-    str.replace(' ', '_')
-
-# 2) crear libro con pandas
-
-# writer = pd.ExcelWriter('data/data.xlsx', engine='xlsxwriter')
-# data.to_excel(writer, sheet_name='data')
-
+data['dato'] = comma_to_dot(data, 'dato')
 
 # 3) acceder a xlsxwriter
 
@@ -150,28 +126,4 @@ for d in data_agrupada.groups.keys():
 
 wb.close()
 
-# %%
-#
-# # %%
-# # 3) crear grupos para graficos
-#
-# abcd = 'A B C D E F G H I J K L M N O P Q R S T U V W X Y Z'.split()
-# paises = data.pais_estandar.unique().tolist()
-# sexo = data.sexo.unique().tolist()
-#
-# ws.autofilter('A1:' + abcd[data.shape[1]] + '1')
-#
-# # %%
-#
-# for s in sexo:
-#     wsexo = wb.add_worksheet(s)
-#     ws.filter_column(3, 'sexo == @s')
-#     row = 1
-#     for row_data in (data):
-#         sexo = row_data[0]
-#         if sexo == s:
-#             pass
-#         else:
-#             ws.set_row(row, options={'hidden': True})
-#
-#
+
